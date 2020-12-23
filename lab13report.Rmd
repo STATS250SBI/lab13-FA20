@@ -1,0 +1,284 @@
+---
+title: "STATS 250 Lab 13"
+author: "Lab Dream Team"
+date: "Week of 11/30/2020"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_collapsed: true
+    theme: lumen
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+if (!require(checkmate))
+  install.packages('checkmate')
+source("plotT.R")
+```
+
+## Learning Objectives
+
+### Statistical Learning Objectives
+1. Learn about how to make inference about linear regression parameters
+1. Learn about checking conditions for valid inference in linear regression
+
+### R Learning Objectives
+1. Interpret output from `lm()` to make linear regression inference
+1. Use R to check conditions for valid inference in linear regression
+
+### Functions covered in this lab
+1. `lm()`
+2. `confint()`
+
+## Lab Demo
+
+### Recap: Linear Regression
+
+Let's remind ourselves of how to perform linear regression in R. Remember that in Lab 5 (yeah, that was a while ago, we know) we explored linear regression using the penguins data. Specifically, we looked at the linear relationship between body mass and bill length. This time, we're going to look at the relationship between body mass and *flipper* length.
+
+```{r penguins}
+penguins <- read.csv("https://raw.githubusercontent.com/STATS250SBI/palmerpenguins/master/inst/extdata/penguins_NArm.csv", stringsAsFactors = TRUE)
+```
+
+Let's start by making a scatterplot. Remember that we're going to use **formula notation**: `response variable ~ explanatory variable`.
+
+```{r}
+plot(body_mass_g ~ flipper_length_mm,
+     data = penguins,
+     ylab = "Body Mass (g)", xlab = "Flipper Length (mm)",
+     main = "Penguin Body Mass vs. Flipper Length")
+```
+
+Recall that to fit a linear regression model, we use the `lm()` function. We store the results as `mod1` so that we can refer to it later (most commonly in the `summary()` function). 
+
+```{r reg1}
+mod1 <- lm(body_mass_g ~ flipper_length_mm, data = penguins)
+summary(mod1)
+```
+
+**Replace this text with the equation of the regression line.**
+
+**Fill in the blanks:** We estimate that a one-millimeter longer flipper is associated with a ________-gram ___ higher/lower ___ body mass, on average, in the population of penguins represented by this sample.
+
+### Regression Diagnostics
+
+Remember the conditions under which the simple linear regression line is the line of best fit:
+
+- **Linearity:** The relationship between the explanatory and response variables should be linear.
+- **Independence:** The observations must be independent of one another. This does not mean that the response and explanatory variables are independent; rather, that the "individuals" from whom we collect information must be independent of each other.
+- **Nearly Normal Residuals:** The residuals should come from a nearly-normal population of residuals.
+- **Equal (constant) variability:** The variability of the residuals should not depend on where they are along the regression line.
+
+We can check these conditions using **diagnostic plots**. To make these plots, we'll pass our regression model to the `plot()` function.
+
+**NOTE:** We're also passing `add.smooth = FALSE` and `id.n = 0` to `plot()` along with `mod1`, our regression model. Please make sure you do this when creating diagnostic plots.
+
+```{r reg1diagnostics}
+# Notice the add.smooth and id.n arguments are set to FALSE and 0, respectively.
+# These turn off "features" of the diagnostic plots that we think do more harm
+# than good. Passing `which = c(1, 2)` tells R we only want a residual plot and
+# a QQ plot of the residuals; these are the only plots we'll be using in this
+# course.
+
+plot(mod1, which = c(1, 2), add.smooth = FALSE, id.n = 0)
+```
+
+**Replace this text with your thoughts about the plots.**
+
+### Inference for Linear Regression Parameters
+
+Let's go back to that `lm()` output:
+
+```{r lmOut}
+summary(mod1)
+```
+
+Let's say we want to know if, at the population level, there's a relationship between penguin flipper length and body mass. If there's no relationship, then $\beta_1$, the population slope, should be 0. So our hypotheses are
+$$H_0: \beta_1 = 0 \quad \text{vs.} \quad H_a: \beta_1 \neq 0.$$
+Note that, since we didn't specify a direction, we're using a *two-sided* alternative.
+
+We can construct a t-statistic for this!
+$$ t = \frac{b_1 - b_{1, \text{null}}}{SE_{b_1}} = \frac{50.15 - 0}{1.54} = 32.56$$
+
+And the p-value? Remember the degrees of freedom are given by $n - 2$.
+
+```{r pValueVis}
+plotT(333 - 2, shadeValues = c(-32.56, 32.56), direction = "outside",
+      xlim = c(-34, 34))
+```
+
+```{r examplepval, error = T}
+# Replace this comment with code to compute the p-value.
+
+```
+
+**KEY IDEA:** R output gives you t-statistics and *two-sided* p-values for hypothesis tests about regression coefficients where the *null value is zero*.
+
+We can also easily create confidence intervals for the regression parameters using the `confint()` function. Remember that to construct a confidence interval for the slope, we'll use
+$$b_1 \pm t^* \times \mathrm{SE}_{b_1}$$
+(same idea for the intercept, just replace $b_1$ with $b_0$).
+
+We can quickly do this for both the intercept and slope using `confint()`:
+
+```{r confintDemo}
+confint(mod1, level = .95)
+```
+
+So a 95% confidence interval for the slope is (47.12, 53.18). **Exercise:** verify this using the regression output!
+
+### Plotting a Regression Line
+
+Let's go back to the scatterplot we made earlier:
+
+```{r}
+plot(body_mass_g ~ flipper_length_mm,
+     data = penguins,
+     ylab = "Body Mass (g)", xlab = "Flipper Length (mm)",
+     main = "Penguin Body Mass vs. Flipper Length")
+```
+
+We can plot the estimated regression line using `abline()`. Just pass it the regression model!
+
+```{r}
+plot(body_mass_g ~ flipper_length_mm,
+     data = penguins,
+     ylab = "Body Mass (g)", xlab = "Flipper Length (mm)",
+     main = "Penguin Body Mass vs. Flipper Length")
+abline(mod1, col = "tomato", lwd = 2)
+```
+
+## Code Cheat Sheet
+
+The formatting of this will be easier to read in the knitted version of the document.
+
+- **`lm(formula, data)`**
+  - `formula` is a symbolic description of the model you want to fit: recall the syntax is `response ~ explanatory`.
+  - `data` is a data frame which contains the variables used in `formula`.
+- **`pt(q, df, lower.tail = TRUE)`**
+  - `q` is the x-axis value you want to find an area related to
+  - `df` is the degrees of freedom of the $t$ distribution
+  - `lower.tail` determines whether `pt()` finds the area to the left or right of `q`. If `lower.tail = TRUE` (the default), it shades to the left. If `lower.tail = FALSE`, it shades to the right.
+- **`qt(q, df, lower.tail = TRUE)`**
+  - `p` is the probability or area under the curve you want to find an x-axis value for
+  - `df` is the degrees of freedom of the $t$ distribution
+  - `lower.tail` determines whether `pt()` finds the area to the left or right of `q`. If `lower.tail = TRUE` (the default), it shades to the left. If `lower.tail = FALSE`, it shades to the right.
+- **`plotT()`**
+  - `df` refers to the degrees of freedom of the distribution to plot. You must provide this value.
+  - `shadeValues` is a vector of up to 2 numbers that define the region you want to shade
+  - `direction` can be one of `less`, `greater`, `outside`, or `inside`, and controls the direction of shading between `shadeValues`. Must be `less` or `greater` if `shadeValues` has only one element; `outside` or `inside` if two
+  - `col.shade` controls the color of the shaded region, defaults to `"cornflowerblue"`
+  - `...` lets you specify other graphical parameters to control the appearance of the normal curve (e.g., `lwd`, `lty`, `col`, etc.)
+- **`plot(model, which, add.smooth, id.n)` for `lm()` output**
+  - `model` is a fitted regression model (an `lm` object)
+  - `which` controls which diagnostic plots you want to see. We're typically interested in just the first 2, so we'll set this to `c(1, 2)`. 
+  - `add.smooth` controls whether or not to add a "smoother" to the residual plot. *SET THIS TO `FALSE`*.
+  - `id.n` controls the number of the most unusual points to identify in the plots. This is generally not helpful and confusing: *SET THIS TO `0`*.
+- **`confint(object, level)`**
+  - `object` is a fitted regression model (an `lm` object)
+  - `level` is the required confidence level, must be between 0 and 1.
+
+## Try It!
+Depending on your instruction method (synchronous remote, asynchronous remote), complete the following exercises collaboratively. 
+
+1. **Asynchronous remote:** Join a Piazza lab group for asynchronous collaboration.
+1. **Syncrhonous remote:** In Zoom breakout rooms, work together with your group and use the "Ask for help" button to call your lab instructor.
+
+**Collaborators:** If applicable, replace this text with the names of anyone you collaborated with on this project.
+
+In 2004, the state of North Carolina released a large data set containing information on births recorded in this state. This data set is useful to researchers studying the relation between habits and practices of expectant mothers and the birth of their children. We will work with a random sample of observations from this data set.
+
+```{r readData2}
+births <- read.csv("births.csv", stringsAsFactors = T)
+```
+
+>**1.** Perform a linear regression of the infant's birthweight in pounds (the `weight` variable) on the weight in pounds gained by the mother during pregnancy (`gained`). Store the regression model as a variable called mod2 and use R to summarize the results.
+
+```{r tryIt1, error = T}
+# Replace this comment with code required for Try It 1. (Remember that this text is a comment, so R ignores it; you can delete it if you want.) If you don't delete it, **start your code on a new line that doesn't start with #**
+
+```
+
+
+>**2.** Write the equation of the estimated linear regression line.
+
+Replace this text with your answer to Try It 2.
+
+
+>**3.** Check the conditions necessary to ensure that the estimated regression line is in fact the line of best fit.
+
+```{r tryIt3, error = T}
+# Replace this comment with code required for Try It 3. (Remember that this text is a comment, so R ignores it; you can delete it if you want.) If you don't delete it, **start your code on a new line that doesn't start with #**
+
+```
+
+Replace this text with your written answer to Try It 3.
+
+
+> **4.** Provide an interpretation of the slope of the regression line in context.
+
+Replace this text with your answer to Try It 4.
+
+
+> **5.** Provide an interpretation of $R^2$ in context.
+
+Replace this text with your answer to Try It 5.
+
+
+> **6.** Set up and perform a hypothesis test to address the question of whether weight gained during pregnancy has a linear association with infant birthweight. You may use the linear regression model output. Your hypotheses should be formulated mathematically, in terms of a parameter.
+  
+$H_0$: replace this text with your null hypothesis
+
+$H_a$: replace this text with your alternative hypothesis
+
+```{r tryIt6, error = T}
+# Replace this comment with any code you need for Try It 6. (Remember that this text is a comment, so R ignores it; you can delete it if you want.) If you don't delete it, **start your code on a new line that doesn't start with #**
+
+```
+
+Replace this text with your answer to Try It 6.
+
+
+## Dive Deeper
+
+> **1.** In Try It 6, we found that we have extremely strong evidence to say that the population slope is not zero. If we changed the alternative hypothesis to $\beta_1 > 0$, what would be the p-value for our test?
+
+Replace this text with your written answer for Dive Deeper 1.
+
+
+> **2.** Revisit your intepretation of the estimated slope coefficient in Try It 4. Do you think this number is clinically meaningful? That is, do you think it is important for the child's birthweight that pregnant parents gain weight during pregnancy? (If it helps you conceptualize things better, you can convert birthweight to ounces by multiplying by 16.)
+
+Replace this text with your written answer for Dive Deeper 2.
+
+
+> **3.** What our estimate of the average birthweight for a mother who gained zero pounds during pregnancy? In terms of the regression model, what is this value called?
+
+Replace this text with your written answer for Dive Deeper 3.
+
+
+> **4.** How much evidence do we have that the population average birthweight for a mother who gained zero pounds during pregnancy is not equal to zero? Is it meaningful to compare this value to zero?
+
+Replace this text with your written answer for Dive Deeper 4.
+
+
+## Wrap-Up and Submission
+
+At the top of the document, make sure you've changed the `author` field to your name (in quotes!). If you'd like, change the date as well.
+
+**When you've finished the lab, click the Knit button one last time.**
+
+
+### Submission instructions
+#### If you're using RStudio Cloud
+1. In the Files pane, check the box next to `lab13report.html`.
+2. Click More > Export...
+3. Click Download and save the file on your computer in a folder you'll remember and be able to find later. You can just call the file `lab13report.html` or whatever else you'd like (as long as you remember what you called it).
+
+#### If you're using RStudio installed on your computer
+1. locate the `lab13report.html` file on your computer. The file will be saved in the location indicated at the top of the files pane.
+
+#### Submission to Canvas
+
+1. Click the "Assignments" panel on the left side of the page. Scroll to find "Lab 13", and open the assignment. Click "Submit Assignment". 
+2. Towards the bottom of the page, you'll be able to choose `lab13report.html` from the folder you saved it in from RStudio Cloud or noted if you're using RStudio Desktop. **You will only be able to upload a .html file -- do not upload any other file type.**
+  3. Click "Submit Assignment". You're done! 
